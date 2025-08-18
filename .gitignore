@@ -100,3 +100,5 @@ var/
 *.old
 
 archive/
+GITHUB_SECRETS_SETUP.md
+RUNPOD_MANUAL_DEPLOY.md

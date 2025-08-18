@@ -12,9 +12,23 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Device configuration - macOS compatible
-DEVICE = "cpu"  # Force CPU for macOS compatibility  
-DTYPE = torch.float32  # Use float32 for macOS compatibility
+# Device configuration - Auto-detect based on environment
+import platform
+import os
+
+is_macos = platform.system() == "Darwin"
+is_docker = os.path.exists("/.dockerenv")
+
+if is_macos:
+    # macOS: Force CPU
+    DEVICE = "cpu"
+    DTYPE = torch.float32
+else:
+    # Linux/Docker: Use GPU if available
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    DTYPE = torch.bfloat16 if torch.cuda.is_available() else torch.float32
+
+logger.info(f"🔧 Device: {DEVICE}, Data Type: {DTYPE}")
 
 
 class Embedder:
@@ -50,8 +64,12 @@ class Embedder:
             input_ids = enc_in["input_ids"].to(self.device, non_blocking=True)
             attn = enc_in["attention_mask"].to(self.device, non_blocking=True)
             
-            # Use torch.no_grad() for macOS compatibility
-            with torch.no_grad():
+            # Use autocast for GPU, no_grad for CPU
+            with (
+                torch.autocast(device_type="cuda", dtype=self.dtype)
+                if self.device == "cuda"
+                else torch.no_grad()
+            ):
                 out = self.enc(input_ids=input_ids, attention_mask=attn)
                 last = out.last_hidden_state
                 mask = attn.unsqueeze(-1)
