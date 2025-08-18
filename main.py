@@ -339,8 +339,9 @@ async def search(request: QueryRequest, api_key: str = Depends(verify_api_key_he
         logger.info(f"✅ F32 reranking completed, got {len(ce_scores)} scores")
         
         logger.info("Step 9: Final results...")
-        # Sort by rerank scores
-        order2 = np.argsort(-np.array(ce_scores))
+        # Sort by retrieval scores (highest first)
+        retrieval_scores = [meta[1] for meta in meta_list]  # Extract retrieval scores
+        order2 = np.argsort(-np.array(retrieval_scores))
         
         # Build results
         results = []
@@ -358,6 +359,18 @@ async def search(request: QueryRequest, api_key: str = Depends(verify_api_key_he
             else:
                 title_part = ""
                 text_part = passage
+            
+            # Clean up title by removing section suffixes
+            def clean_title(title):
+                if not title:
+                    return title
+                # Remove patterns like "— ABSTRACT", "— INTRODUCTION", etc.
+                import re
+                # Remove anything after " — " or " - " followed by uppercase words
+                cleaned = re.sub(r'\s*[—-]\s*[A-Z][A-Z\s]*$', '', title.strip())
+                return cleaned.strip()
+            
+            title_part = clean_title(title_part)
             
             # Remove title from text if it appears at the beginning
             if title_part and text_part.startswith(title_part):
@@ -428,7 +441,15 @@ async def admin_reload(api_key: str = Depends(verify_api_key_header)):
 if __name__ == "__main__":
     import uvicorn
 
-
+    echo "OPENSCHOLAR_API_KEY=API85bMy0CzeAMcRZ6d4AWlABNzcnXU1EtcO8MS4rQ" > .env
+    echo "API_HOST=0.0.0.0" >> .env
+    echo "API_PORT=8002" >> .env
+    echo "DEBUG_LOGGING=true" >> .env
+    echo "SEARCH_TIMEOUT=60" >> .env
+    echo "REQUEST_TIMEOUT=120" >> .env
+    echo "PRODUCTION_MODE=false" >> .env
+    echo "ENABLE_CACHE=true" >> .env
+    echo "CACHE_DIR=./model_cache" >> .env
     
     # Load configuration from environment
     host = os.getenv("API_HOST", "0.0.0.0")

@@ -236,7 +236,9 @@ async def run_search(params: Dict[str, Any]) -> Dict[str, Any]:
         
         # Step 9: Build final results
         logger.info("Step 9: Building final results...")
-        order2 = np.argsort(-np.array(ce_scores))
+        # Sort by retrieval scores (highest first)
+        retrieval_scores = [meta[1] for meta in meta_list]  # Extract retrieval scores
+        order2 = np.argsort(-np.array(retrieval_scores))
         
         results = []
         for rank, idx in enumerate(order2[:params["final_topk"]], 1):
@@ -252,6 +254,18 @@ async def run_search(params: Dict[str, Any]) -> Dict[str, Any]:
             else:
                 title_part = ""
                 text_part = passage
+            
+            # Clean up title by removing section suffixes
+            def clean_title(title):
+                if not title:
+                    return title
+                # Remove patterns like "— ABSTRACT", "— INTRODUCTION", etc.
+                import re
+                # Remove anything after " — " or " - " followed by uppercase words
+                cleaned = re.sub(r'\s*[—-]\s*[A-Z][A-Z\s]*$', '', title.strip())
+                return cleaned.strip()
+            
+            title_part = clean_title(title_part)
             
             # Remove title from text if it appears at the beginning
             if title_part and text_part.startswith(title_part):
