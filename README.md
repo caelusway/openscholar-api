@@ -1,5 +1,9 @@
 # OpenScholar Retriever + Reranker API
 
+[![Deploy to RunPod](https://github.com/caelusway/openscholar-api/actions/workflows/deploy.yml/badge.svg)](https://github.com/caelusway/openscholar-api/actions/workflows/deploy.yml)
+[![Docker Hub](https://img.shields.io/docker/pulls/caelusway/open-scholar-inference.svg)](https://hub.docker.com/r/caelusway/open-scholar-inference)
+[![RunPod Ready](https://img.shields.io/badge/RunPod-Ready-green.svg)](https://runpod.io/)
+
 A clean, efficient API for scientific document retrieval and reranking using OpenScholar models.
 
 ## 🎯 Overview
@@ -8,20 +12,32 @@ This API provides a focused implementation of scientific document search and ran
 
 ## 🚀 Quick Start
 
+### Local Development
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/caelusway/openscholar-api.git
 cd openscholar-api
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Start the API (downloads models automatically on first run)
-python start_retriever_api.py
+# Set up environment
+echo "OPENSCHOLAR_API_KEY=your-api-key" > .env
 
-# Test it works
-python test_retriever_api.py
+# Start the API (downloads models automatically on first run)
+python main.py
 ```
+
+### 🐳 Docker Deployment
+```bash
+# Pull and run the Docker image
+docker run -p 8002:8002 -e OPENSCHOLAR_API_KEY=your-api-key caelusway/open-scholar-inference:latest
+```
+
+### ☁️ RunPod Deployment
+1. **Automatic CI/CD**: Push to `main` branch triggers automatic deployment
+2. **Manual**: Use the GitHub Actions workflow in the repository
+3. **Access**: Your deployed API at `https://your-runpod-id-8002.proxy.runpod.net`
 
 The API will be available at **http://localhost:8002** with interactive documentation at **/docs**.
 

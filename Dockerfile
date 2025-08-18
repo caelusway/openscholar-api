@@ -1,5 +1,5 @@
 # OpenScholar API - GPU-Optimized Dockerfile for RunPod
-FROM nvidia/cuda:11.8-devel-ubuntu22.04
+FROM nvidia/cuda:12.4.0-devel-ubuntu22.04
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
@@ -28,7 +28,7 @@ COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip3 install --upgrade pip setuptools wheel
-RUN pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+RUN pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 RUN pip3 install -r requirements.txt
 
 # Install RunPod SDK for serverless support
@@ -44,13 +44,7 @@ RUN mkdir -p /app/model_cache /app/logs
 RUN chmod +x /app/main.py /app/handler.py
 
 # Initialize system on build (warm start)
-RUN python3 -c "
-import os; 
-os.environ['OPENSCHOLAR_API_KEY'] = 'build-key';
-from main import safe_initialize_system;
-import asyncio;
-asyncio.run(safe_initialize_system())
-" || echo "Warm start failed, will initialize at runtime"
+RUN python3 -c "import os; os.environ['OPENSCHOLAR_API_KEY'] = 'build-key'; from main import safe_initialize_system; import asyncio; asyncio.run(safe_initialize_system())" || echo "Warm start failed, will initialize at runtime"
 
 # Expose port (for persistent deployment)
 EXPOSE 8002
