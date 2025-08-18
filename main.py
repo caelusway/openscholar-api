@@ -437,5 +437,5 @@ if __name__ == "__main__":
         port=port, 
         log_level="info" if debug else "warning",
         timeout_keep_alive=request_timeout,
-        timeout_graceful_shutdown=30
+        timeout_graceful_shutdown=300
     )
