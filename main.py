@@ -86,16 +86,11 @@ class QueryRequest(BaseModel):
     max_length: int = Field(default=512, ge=128, le=1024, description="Max token length")
 
 class RetrievalResult(BaseModel):
-    rank: int
-    hash_id: int
-    paper_id: str
-    section: str
-    subsection: Optional[str]  # Allow None values
-    paragraph_index: int
-    boost: float
-    text_preview: str
     retrieval_score: float
-    rerank_score: float
+    paper_id: str
+    chunk_id: str
+    text: str
+    title: str
 
 class QueryResponse(BaseModel):
     query: str
@@ -225,7 +220,7 @@ async def health_check():
     
     return {
         "status": "healthy",
-        "version": "2.3.0-secure",
+        "version": "1.0.0",
         "security": "enabled",
         "tensor_type": "float32",
         "models_loaded": {
@@ -340,22 +335,27 @@ async def search(request: QueryRequest, api_key: str = Depends(verify_api_key_he
             iid, retrieval_score, md = meta_list[idx]
             rerank_score = ce_scores[idx]
             
-            # Get text
+            # Get the original passage that was used for reranking
+            passage = passages[idx]
             cid = md["chunk_id"]
-            text = cid_to_text.get(cid, "")
-            preview = (text[:240] + "…") if len(text) > 260 else text
+            
+            # Extract title and text from passage
+            if "\n\n" in passage:
+                title_part, text_part = passage.split("\n\n", 1)
+            else:
+                title_part = ""
+                text_part = passage
+            
+            # Remove title from text if it appears at the beginning
+            if title_part and text_part.startswith(title_part):
+                text_part = text_part[len(title_part):].lstrip("\n").strip()
             
             results.append(RetrievalResult(
-                rank=rank,
-                hash_id=int(iid),
-                paper_id=md.get("paper_id", ""),
-                section=md.get("section", ""),
-                subsection=md.get("subsection"),  # Allow None
-                paragraph_index=md.get("paragraph_index", 0),
-                boost=md.get("boost", 1.0),
-                text_preview=preview,
                 retrieval_score=float(retrieval_score),
-                rerank_score=float(rerank_score)
+                paper_id=md.get("paper_id", ""),
+                chunk_id=cid,
+                text=text_part,
+                title=title_part
             ))
         
         processing_time = time.time() - start_time
