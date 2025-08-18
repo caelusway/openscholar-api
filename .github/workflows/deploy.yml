@@ -66,9 +66,11 @@ jobs:
           echo "API_PORT=8002" >> .env
           mkdir -p model_cache logs
           
-          # Stop old process and start new
-          pkill -f "python main.py" || true
-          nohup python main.py > logs/api.log 2>&1 &
+          # Stop old process and start new with PM2
+          pm2 stop openscholar-api || true
+          pm2 delete openscholar-api || true
+          pm2 start ecosystem.config.js
+          pm2 save
           
           # Wait and test
           sleep 20

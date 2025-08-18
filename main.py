@@ -427,6 +427,8 @@ async def admin_reload(api_key: str = Depends(verify_api_key_header)):
 
 if __name__ == "__main__":
     import uvicorn
+
+
     
     # Load configuration from environment
     host = os.getenv("API_HOST", "0.0.0.0")
