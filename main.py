@@ -440,16 +440,6 @@ async def admin_reload(api_key: str = Depends(verify_api_key_header)):
 
 if __name__ == "__main__":
     import uvicorn
-
-    echo "OPENSCHOLAR_API_KEY=API85bMy0CzeAMcRZ6d4AWlABNzcnXU1EtcO8MS4rQ" > .env
-    echo "API_HOST=0.0.0.0" >> .env
-    echo "API_PORT=8002" >> .env
-    echo "DEBUG_LOGGING=true" >> .env
-    echo "SEARCH_TIMEOUT=60" >> .env
-    echo "REQUEST_TIMEOUT=120" >> .env
-    echo "PRODUCTION_MODE=false" >> .env
-    echo "ENABLE_CACHE=true" >> .env
-    echo "CACHE_DIR=./model_cache" >> .env
     
     # Load configuration from environment
     host = os.getenv("API_HOST", "0.0.0.0")
