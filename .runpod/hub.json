@@ -1,0 +1,67 @@
+{
+  "title": "OpenScholar API",
+  "description": "Scientific document retrieval and reranking API powered by bio-protocol models. Performs semantic search and cross-encoder reranking on academic papers with GPU acceleration.",
+  "type": "serverless",
+  "category": "text",
+  "iconUrl": "https://raw.githubusercontent.com/anthropics/claude-code/main/assets/icon.png",
+  "config": {
+    "runsOn": "GPU",
+    "containerDiskInGb": 20,
+    "presets": [
+      {
+        "name": "Development",
+        "defaults": {
+          "OPENSCHOLAR_API_KEY": "dev-key-change-in-production",
+          "DEBUG_LOGGING": "true",
+          "SEARCH_TIMEOUT": "60"
+        }
+      },
+      {
+        "name": "Production",
+        "defaults": {
+          "OPENSCHOLAR_API_KEY": "prod-key-change-immediately",
+          "DEBUG_LOGGING": "false", 
+          "SEARCH_TIMEOUT": "30"
+        }
+      }
+    ],
+    "env": [
+      {
+        "key": "OPENSCHOLAR_API_KEY",
+        "input": {
+          "name": "API Key",
+          "type": "string",
+          "description": "Secure API key for authentication (required for all endpoints except /health)",
+          "default": "your-secure-api-key-here"
+        }
+      },
+      {
+        "key": "SEARCH_TIMEOUT",
+        "input": {
+          "name": "Search Timeout (seconds)",
+          "type": "string",
+          "description": "Maximum time allowed for search operations",
+          "default": "30"
+        }
+      },
+      {
+        "key": "DEBUG_LOGGING",
+        "input": {
+          "name": "Enable Debug Logging",
+          "type": "string",
+          "description": "Enable detailed logging for debugging (true/false)",
+          "default": "false"
+        }
+      },
+      {
+        "key": "FINAL_TOPK",
+        "input": {
+          "name": "Max Results",
+          "type": "string", 
+          "description": "Maximum number of results to return",
+          "default": "10"
+        }
+      }
+    ]
+  }
+}

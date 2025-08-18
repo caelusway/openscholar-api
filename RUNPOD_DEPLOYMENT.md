@@ -1,6 +1,12 @@
-# RunPod GPU Deployment Guide
+# RunPod Hub Deployment Guide
 
-## Quick Setup for RunPod
+[![Runpod](https://api.runpod.io/badge/caelusway/openscholar-api)](https://console.runpod.io/hub/caelusway/openscholar-api)
+
+## RunPod Hub Serverless Deployment
+
+This project is configured for **RunPod Hub** serverless deployment with automatic GPU scaling.
+
+## Quick Setup for RunPod Hub
 
 ### 1. Prepare Environment File
 Copy `.env.runpod` to `.env` and update the API key:
@@ -19,37 +25,54 @@ docker build -t openscholar-api:latest .
 docker-compose up --build
 ```
 
-### 4. RunPod Template Configuration
+### 4. RunPod Hub Configuration
 
-**Container Settings:**
-- **Image:** Upload your built image or use a registry
-- **Container Disk:** 10GB minimum
-- **Exposed HTTP Port:** 8002
-- **Environment Variables:**
-  ```
-  OPENSCHOLAR_API_KEY=your-secure-api-key-here
-  PRODUCTION_MODE=true
-  DEBUG_LOGGING=false
-  CUDA_VISIBLE_DEVICES=0
-  ```
+The project includes:
+- `.runpod/hub.json` - Hub listing configuration
+- `.runpod/tests.json` - Automated testing configuration
+- `handler.py` - Serverless handler function
+
+**Supported Endpoints:**
+- `health` - System health check (no auth required)
+- `search` - Main search functionality (requires API key)
+- `admin_stats` - System statistics (requires API key)
 
 **GPU Requirements:**
 - **Minimum:** 8GB VRAM (RTX 3070, RTX 4060 Ti)
 - **Recommended:** 16GB+ VRAM (RTX 4080, RTX 4090, A40, A100)
 
-### 5. Health Check Endpoint
-After deployment, verify the API is running:
-```
-GET https://your-runpod-url.com/health
+### 5. Serverless API Usage
+
+**Health Check:**
+```python
+import requests
+
+response = requests.post("https://api.runpod.ai/v2/your-endpoint-id/run", json={
+    "input": {"endpoint": "health"}
+})
 ```
 
-### 6. API Usage
-Protected endpoints require the API key in the `X-API-Key` header:
-```bash
-curl -X POST "https://your-runpod-url.com/search" \
-  -H "X-API-Key: your-secure-api-key-here" \
-  -H "Content-Type: application/json" \
-  -d '{"query": "CRISPR gene editing mechanisms"}'
+**Search Request:**
+```python
+response = requests.post("https://api.runpod.ai/v2/your-endpoint-id/run", json={
+    "input": {
+        "query": "CRISPR gene editing mechanisms",
+        "final_topk": 5
+    }
+})
+```
+
+**Advanced Search:**
+```python
+response = requests.post("https://api.runpod.ai/v2/your-endpoint-id/run", json={
+    "input": {
+        "query": "machine learning drug discovery",
+        "initial_topk": 100,
+        "keep_for_rerank": 30,
+        "final_topk": 10,
+        "per_paper_cap": 2
+    }
+})
 ```
 
 ## Performance Optimization
