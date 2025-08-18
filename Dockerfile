@@ -28,7 +28,8 @@ COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip3 install --upgrade pip setuptools wheel
-RUN pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# Install PyTorch 2.6+ to fix security vulnerability CVE-2025-32434
+RUN pip3 install torch>=2.6.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 RUN pip3 install -r requirements.txt
 
 # Install RunPod SDK for serverless support
