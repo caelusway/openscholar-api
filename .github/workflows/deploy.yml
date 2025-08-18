@@ -167,11 +167,21 @@ jobs:
   deploy-to-runpod:
     needs: [build-and-test, build-docker]
     runs-on: ubuntu-latest
-    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.event.inputs.deploy_to_runpod == 'true') && secrets.RUNPOD_SSH_KEY != ''
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.event.inputs.deploy_to_runpod == 'true'
     
     steps:
     - name: 📥 Checkout code
       uses: actions/checkout@v4
+
+    - name: 🔍 Check RunPod credentials
+      run: |
+        if [ -z "${{ secrets.RUNPOD_SSH_KEY }}" ] || [ -z "${{ secrets.OPENSCHOLAR_API_KEY }}" ]; then
+          echo "❌ RunPod credentials not configured. Skipping deployment."
+          echo "💡 Configure RUNPOD_SSH_KEY and OPENSCHOLAR_API_KEY in repository secrets"
+          exit 0
+        else
+          echo "✅ RunPod credentials found"
+        fi
 
     - name: 🔑 Setup SSH key
       run: |
