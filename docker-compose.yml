@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  openscholar-api:
+    build: .
+    container_name: openscholar-api
+    ports:
+      - "8002:8002"
+    environment:
+      - OPENSCHOLAR_API_KEY=${OPENSCHOLAR_API_KEY:-openscholar-docker-key}
+      - API_HOST=0.0.0.0
+      - API_PORT=8002
+      - PRODUCTION_MODE=true
+      - DEBUG_LOGGING=false
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - model_cache:/app/model_cache
+      - ./logs:/app/logs
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+volumes:
+  model_cache:
+    driver: local

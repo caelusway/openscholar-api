@@ -5,21 +5,32 @@ Fixes OpenMP conflicts on macOS
 """
 
 import os
+import platform
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Fix OpenMP library conflict on macOS
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-os.environ["OMP_NUM_THREADS"] = "1"
-# Force CPU-only on macOS to avoid GPU conflicts
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
-os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+# Detect environment and configure accordingly
+is_macos = platform.system() == "Darwin"
+is_docker = os.path.exists("/.dockerenv")
+cuda_available = os.getenv("CUDA_VISIBLE_DEVICES") != ""
+
+if is_macos:
+    # macOS-specific configuration
+    os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+    os.environ["OMP_NUM_THREADS"] = "1"
+    os.environ["CUDA_VISIBLE_DEVICES"] = ""
+    os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
 import torch
-# Set single thread for macOS stability
-torch.set_num_threads(1)
+
+# Set threading based on environment
+if is_macos:
+    torch.set_num_threads(1)
+elif is_docker and cuda_available:
+    # GPU Docker environment - use more threads
+    torch.set_num_threads(4)
 
 import time
 import logging
@@ -437,5 +448,5 @@ if __name__ == "__main__":
         port=port, 
         log_level="info" if debug else "warning",
         timeout_keep_alive=request_timeout,
-        timeout_graceful_shutdown=30
+        timeout_graceful_shutdown=300
     )

@@ -1,0 +1,54 @@
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.runpod
+
+# Git
+.git/
+.gitignore
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Model cache (will be downloaded in container)
+model_cache/
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test files
+tests/
+test_*
+
+# Documentation
+*.md
+!README.md
+
+# Archive
+archive/
+
+# Temporary files
+*.tmp
+*.backup
+*.old
