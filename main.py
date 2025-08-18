@@ -247,6 +247,8 @@ async def search(request: QueryRequest, api_key: str = Depends(verify_api_key_he
         raise HTTPException(status_code=503, detail="System not fully initialized")
     
     logger.info(f"🔍 F32-only search for query: '{request.query}'")
+    search_timeout = int(os.getenv("SEARCH_TIMEOUT", "180"))
+    logger.info(f"⏱️ Search timeout set to {search_timeout}s (CPU mode)")
     start_time = time.time()
     
     try:
@@ -426,4 +428,14 @@ if __name__ == "__main__":
     else:
         logger.info("🔐 API Key authentication enabled")
     
-    uvicorn.run(app, host=host, port=port, log_level="info" if debug else "warning")
+    # Load timeout settings from environment
+    request_timeout = int(os.getenv("REQUEST_TIMEOUT", "120"))
+    
+    uvicorn.run(
+        app, 
+        host=host, 
+        port=port, 
+        log_level="info" if debug else "warning",
+        timeout_keep_alive=request_timeout,
+        timeout_graceful_shutdown=30
+    )
