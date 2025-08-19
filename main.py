@@ -97,7 +97,7 @@ class QueryRequest(BaseModel):
     max_length: int = Field(default=512, ge=128, le=1024, description="Max token length")
 
 class RetrievalResult(BaseModel):
-    retrieval_score: float
+    reranker_score: float
     paper_id: str
     chunk_id: str
     text: str
@@ -339,9 +339,8 @@ async def search(request: QueryRequest, api_key: str = Depends(verify_api_key_he
         logger.info(f"✅ F32 reranking completed, got {len(ce_scores)} scores")
         
         logger.info("Step 9: Final results...")
-        # Sort by retrieval scores (highest first)
-        retrieval_scores = [meta[1] for meta in meta_list]  # Extract retrieval scores
-        order2 = np.argsort(-np.array(retrieval_scores))
+        # Sort by reranker scores (highest first)
+        order2 = np.argsort(-np.array(ce_scores))
         
         # Build results
         results = []
@@ -377,7 +376,7 @@ async def search(request: QueryRequest, api_key: str = Depends(verify_api_key_he
                 text_part = text_part[len(title_part):].lstrip("\n").strip()
             
             results.append(RetrievalResult(
-                retrieval_score=float(retrieval_score),
+                reranker_score=float(rerank_score),
                 paper_id=md.get("paper_id", ""),
                 chunk_id=cid,
                 text=text_part,

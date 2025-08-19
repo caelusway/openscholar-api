@@ -236,9 +236,8 @@ async def run_search(params: Dict[str, Any]) -> Dict[str, Any]:
         
         # Step 9: Build final results
         logger.info("Step 9: Building final results...")
-        # Sort by retrieval scores (highest first)
-        retrieval_scores = [meta[1] for meta in meta_list]  # Extract retrieval scores
-        order2 = np.argsort(-np.array(retrieval_scores))
+        # Sort by reranker scores (highest first)
+        order2 = np.argsort(-np.array(ce_scores))
         
         results = []
         for rank, idx in enumerate(order2[:params["final_topk"]], 1):
@@ -272,7 +271,7 @@ async def run_search(params: Dict[str, Any]) -> Dict[str, Any]:
                 text_part = text_part[len(title_part):].lstrip("\n").strip()
             
             results.append({
-                "retrieval_score": float(retrieval_score),
+                "reranker_score": float(rerank_score),
                 "paper_id": md.get("paper_id", ""),
                 "chunk_id": cid,
                 "text": text_part,
