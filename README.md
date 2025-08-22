@@ -24,15 +24,50 @@ cp .env.example .env
 python main.py
 ```
 
+### RunPod Deployment (Recommended)
+
+**One-click setup on RunPod server:**
+
+1. Connect to your RunPod instance:
+```bash
+ssh root@your-runpod-ip -p port -i ~/.ssh/id_ed25519
+```
+
+2. Download and run the setup script:
+```bash
+curl -O https://raw.githubusercontent.com/caelusway/openscholar-api/main/runpod-setup.sh
+chmod +x runpod-setup.sh
+OPENSCHOLAR_API_KEY='your-actual-api-key' bash runpod-setup.sh
+```
+
+3. The API will be available at **http://localhost:8002** with interactive documentation at **/docs**.
+
+**For updates:**
+```bash
+curl -O https://raw.githubusercontent.com/caelusway/openscholar-api/main/runpod-update.sh
+chmod +x runpod-update.sh
+bash runpod-update.sh
+```
+
+**Service management:**
+```bash
+# Check status
+/workspace/start-openscholar.sh status
+
+# View logs
+tail -f /workspace/logs/app.log
+
+# Restart application
+/workspace/start-openscholar.sh restart
+
+# Stop application
+/workspace/start-openscholar.sh stop
+```
+
 ### Docker Deployment
 ```bash
 docker run -p 8002:8002 -e OPENSCHOLAR_API_KEY=YOUR_SECURE_API_KEY caelusway/open-scholar-inference:latest
 ```
-
-### GitHub Actions Deployment
-Push to `main` branch triggers automatic deployment to RunPod via GitHub Actions.
-
-The API will be available at **http://localhost:8002** with interactive documentation at **/docs**.
 
 ## Models Used
 
@@ -182,14 +217,19 @@ The API follows a simple, efficient pipeline:
 - Never commit API keys to version control
 - Use HTTPS in production
 
-## GitHub Secrets Setup
+## Deployment Scripts
 
-For automatic deployment, configure these secrets in GitHub repository settings:
+The repository includes automated deployment scripts for RunPod:
 
-- `DOCKER_USERNAME` - Your Docker Hub username
-- `DOCKER_PASSWORD` - Your Docker Hub password/token
-- `RUNPOD_SSH_KEY` - Your RunPod SSH private key
-- `OPENSCHOLAR_API_KEY` - Your API key for the application
+- **`runpod-setup.sh`** - Initial setup with systemd service creation
+- **`runpod-update.sh`** - Quick updates from GitHub
+
+These scripts handle:
+- Automatic dependency installation
+- Process management with PID tracking
+- Logging and monitoring
+- Environment variable configuration
+- Simple start/stop/restart/status commands
 
 ## Development
 
