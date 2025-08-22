@@ -64,28 +64,30 @@ jobs:
         tar -czf deploy.tar.gz --warning=no-file-changed --exclude='.git' --exclude='node_modules' --exclude='__pycache__' --exclude='.github' --exclude='deploy.tar.gz' .
         
         echo "Uploading code archive to RunPod..."
-        scp -i runpod_key -o StrictHostKeyChecking=no deploy.tar.gz ${{ env.RUNPOD_HOST }}:/workspace/
+        scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no deploy.tar.gz ${{ env.RUNPOD_HOST }}:/workspace/
         
         echo "Extracting code on RunPod..."
-        ssh -i runpod_key -o StrictHostKeyChecking=no -T ${{ env.RUNPOD_HOST }} "cd /workspace && tar -xzf deploy.tar.gz -C openscholar-api && rm deploy.tar.gz"
+        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -T ${{ env.RUNPOD_HOST }} "cd /workspace; tar -xzf deploy.tar.gz -C openscholar-api; rm deploy.tar.gz"
 
     - name: Install dependencies and setup
       run: |
         echo "Setting up SSH key..."
-        echo "${{ secrets.RUNPOD_SSH_KEY }}" > runpod_key
-        chmod 600 runpod_key
+        mkdir -p ~/.ssh
+        echo "${{ secrets.RUNPOD_SSH_KEY }}" > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
         
         echo "Installing dependencies on RunPod..."
-        ssh -i runpod_key -o StrictHostKeyChecking=no -T ${{ env.RUNPOD_HOST }} "cd /workspace/openscholar-api && pip3 install -r requirements.txt && which pm2 || npm install -g pm2"
+        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -T ${{ env.RUNPOD_HOST }} "cd /workspace/openscholar-api && pip3 install -r requirements.txt && which pm2 || npm install -g pm2"
 
     - name: Start application with PM2
       run: |
         echo "Setting up SSH key..."
-        echo "${{ secrets.RUNPOD_SSH_KEY }}" > runpod_key
-        chmod 600 runpod_key
+        mkdir -p ~/.ssh
+        echo "${{ secrets.RUNPOD_SSH_KEY }}" > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
         
         echo "Starting application with PM2..."
-        ssh -i runpod_key -o StrictHostKeyChecking=no -T ${{ env.RUNPOD_HOST }} "cd /workspace/openscholar-api && OPENSCHOLAR_API_KEY='${{ secrets.OPENSCHOLAR_API_KEY }}' API_HOST=0.0.0.0 API_PORT=8002 PRODUCTION_MODE=true DEBUG_LOGGING=false pm2 start main.py --name openscholar-api --interpreter python3 && pm2 save"
+        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -T ${{ env.RUNPOD_HOST }} "cd /workspace/openscholar-api && OPENSCHOLAR_API_KEY='${{ secrets.OPENSCHOLAR_API_KEY }}' API_HOST=0.0.0.0 API_PORT=8002 PRODUCTION_MODE=true DEBUG_LOGGING=false pm2 start main.py --name openscholar-api --interpreter python3 && pm2 save"
 
     - name: Wait for service startup
       run: |
@@ -96,17 +98,18 @@ jobs:
     - name: Health check
       run: |
         echo "Setting up SSH key..."
-        echo "${{ secrets.RUNPOD_SSH_KEY }}" > runpod_key
-        chmod 600 runpod_key
+        mkdir -p ~/.ssh
+        echo "${{ secrets.RUNPOD_SSH_KEY }}" > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
         
         echo "Performing health check..."
-        ssh -i runpod_key -o StrictHostKeyChecking=no -T ${{ env.RUNPOD_HOST }} "curl -f http://localhost:8002/health && echo 'Health check passed - API is responding' || (echo 'Health check failed - API not responding' && exit 1)"
+        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -T ${{ env.RUNPOD_HOST }} "curl -f http://localhost:8002/health && echo 'Health check passed - API is responding' || (echo 'Health check failed - API not responding' && exit 1)"
 
     - name: Cleanup SSH key
       if: always()
       run: |
         echo "Cleaning up SSH key file..."
-        rm -f runpod_key
+        rm -f ~/.ssh/id_ed25519
 
     - name: Deployment summary
       if: success()
