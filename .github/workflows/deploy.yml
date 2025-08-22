@@ -48,63 +48,37 @@ jobs:
         echo "${{ secrets.RUNPOD_SSH_KEY }}" > runpod_key
         chmod 600 runpod_key
 
-    - name: Checkout and upload code
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Prepare and upload code
       run: |
-        echo "Uploading code to RunPod..."
-        ssh -i runpod_key -o StrictHostKeyChecking=no ${{ env.RUNPOD_HOST }} '
-          cd /workspace
-          echo "Stopping existing PM2 processes..."
-          pm2 stop openscholar-api || echo "No PM2 process found"
-          pm2 delete openscholar-api || echo "No PM2 process to delete"
-          
-          echo "Backing up existing code..."
-          rm -rf openscholar-api-backup
-          mv openscholar-api openscholar-api-backup || echo "No existing code to backup"
-          
-          echo "Creating directories..."
-          mkdir -p openscholar-api model_cache logs
-        '
+        echo "Preparing code for upload..."
         
-        echo "Copying code to RunPod..."
-        scp -i runpod_key -o StrictHostKeyChecking=no -r . ${{ env.RUNPOD_HOST }}:/workspace/openscholar-api/
+        echo "Stopping existing PM2 processes on RunPod..."
+        ssh -i runpod_key -o StrictHostKeyChecking=no -T ${{ env.RUNPOD_HOST }} "cd /workspace && pm2 stop openscholar-api || echo 'No PM2 process found' && pm2 delete openscholar-api || echo 'No PM2 process to delete'"
+        
+        echo "Preparing directories on RunPod..."
+        ssh -i runpod_key -o StrictHostKeyChecking=no -T ${{ env.RUNPOD_HOST }} "cd /workspace && rm -rf openscholar-api-backup && mv openscholar-api openscholar-api-backup 2>/dev/null || echo 'No existing code to backup' && mkdir -p openscholar-api model_cache logs"
+        
+        echo "Creating deployment archive..."
+        tar -czf deploy.tar.gz --exclude='.git' --exclude='node_modules' --exclude='__pycache__' --exclude='.github' .
+        
+        echo "Uploading code archive to RunPod..."
+        scp -i runpod_key -o StrictHostKeyChecking=no deploy.tar.gz ${{ env.RUNPOD_HOST }}:/workspace/
+        
+        echo "Extracting code on RunPod..."
+        ssh -i runpod_key -o StrictHostKeyChecking=no -T ${{ env.RUNPOD_HOST }} "cd /workspace && tar -xzf deploy.tar.gz -C openscholar-api && rm deploy.tar.gz"
 
     - name: Install dependencies and setup
       run: |
         echo "Installing dependencies on RunPod..."
-        ssh -i runpod_key -o StrictHostKeyChecking=no ${{ env.RUNPOD_HOST }} '
-          cd /workspace/openscholar-api
-          echo "Installing Python dependencies..."
-          pip3 install -r requirements.txt
-          
-          echo "Installing PM2 if not exists..."
-          which pm2 || npm install -g pm2
-          
-          echo "Setting up environment..."
-          export OPENSCHOLAR_API_KEY="${{ secrets.OPENSCHOLAR_API_KEY }}"
-          export API_HOST=0.0.0.0
-          export API_PORT=8002
-          export PRODUCTION_MODE=true
-          export DEBUG_LOGGING=false
-        '
+        ssh -i runpod_key -o StrictHostKeyChecking=no -T ${{ env.RUNPOD_HOST }} "cd /workspace/openscholar-api && pip3 install -r requirements.txt && which pm2 || npm install -g pm2"
 
     - name: Start application with PM2
       run: |
         echo "Starting application with PM2..."
-        ssh -i runpod_key -o StrictHostKeyChecking=no ${{ env.RUNPOD_HOST }} '
-          cd /workspace/openscholar-api
-          echo "Starting PM2 process..."
-          pm2 start main.py --name openscholar-api \
-            --interpreter python3 \
-            --env OPENSCHOLAR_API_KEY="${{ secrets.OPENSCHOLAR_API_KEY }}" \
-            --env API_HOST=0.0.0.0 \
-            --env API_PORT=8002 \
-            --env PRODUCTION_MODE=true \
-            --env DEBUG_LOGGING=false
-          
-          pm2 save
-          pm2 startup || echo "PM2 startup already configured"
-          echo "Application started successfully"
-        '
+        ssh -i runpod_key -o StrictHostKeyChecking=no -T ${{ env.RUNPOD_HOST }} "cd /workspace/openscholar-api && OPENSCHOLAR_API_KEY='${{ secrets.OPENSCHOLAR_API_KEY }}' API_HOST=0.0.0.0 API_PORT=8002 PRODUCTION_MODE=true DEBUG_LOGGING=false pm2 start main.py --name openscholar-api --interpreter python3 && pm2 save"
 
     - name: Wait for service startup
       run: |
