@@ -55,8 +55,8 @@ jobs:
         
         echo "Preparing code for upload..."
         
-        echo "Stopping existing Docker container on RunPod..."
-        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o LogLevel=ERROR -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "docker stop openscholar-api || echo 'No container found'; docker rm openscholar-api || echo 'No container to remove'"
+        echo "Stopping existing application on RunPod..."
+        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o LogLevel=ERROR -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "pkill -f 'python.*main.py' || echo 'No process found'"
         
         echo "Preparing directories on RunPod..."
         ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o LogLevel=ERROR -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "cd /workspace; rm -rf openscholar-api-backup; mv openscholar-api openscholar-api-backup 2>/dev/null || echo 'No existing code to backup'; mkdir -p openscholar-api model_cache logs"
@@ -70,15 +70,15 @@ jobs:
         echo "Extracting code on RunPod..."
         ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "cd /workspace; tar -xzf deploy.tar.gz -C openscholar-api; rm deploy.tar.gz"
 
-    - name: Build and start Docker container
+    - name: Install dependencies and start application
       run: |
         echo "Setting up SSH key..."
         mkdir -p ~/.ssh
         echo "${{ secrets.RUNPOD_SSH_KEY }}" > ~/.ssh/id_ed25519
         chmod 600 ~/.ssh/id_ed25519
         
-        echo "Building and starting Docker container on RunPod..."
-        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "cd /workspace/openscholar-api && docker build -t openscholar-api:latest . && docker run -d --name openscholar-api --restart unless-stopped -p 8002:8002 -e OPENSCHOLAR_API_KEY='${{ secrets.OPENSCHOLAR_API_KEY }}' -e API_HOST=0.0.0.0 -e API_PORT=8002 -e PRODUCTION_MODE=true -e DEBUG_LOGGING=false -v /workspace/model_cache:/app/model_cache -v /workspace/logs:/app/logs openscholar-api:latest"
+        echo "Installing dependencies and starting application on RunPod..."
+        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "cd /workspace/openscholar-api && pip3 install -r requirements.txt && OPENSCHOLAR_API_KEY='${{ secrets.OPENSCHOLAR_API_KEY }}' API_HOST=0.0.0.0 API_PORT=8002 PRODUCTION_MODE=true DEBUG_LOGGING=false nohup python3 main.py > /workspace/logs/app.log 2>&1 &"
 
     - name: Wait for service startup
       run: |
