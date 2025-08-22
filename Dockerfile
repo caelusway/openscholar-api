@@ -54,5 +54,5 @@ EXPOSE 8002
 HEALTHCHECK --interval=30s --timeout=30s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:8002/health || exit 1
 
-# Default to handler for serverless, can override for persistent
-CMD ["python3", "-c", "import runpod; from handler import runpod_handler; runpod.serverless.start({'handler': runpod_handler})"]
+# Default to main.py for persistent deployment
+CMD ["python3", "main.py"]

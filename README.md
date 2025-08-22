@@ -1,20 +1,15 @@
 # OpenScholar Retriever + Reranker API
 
-[![Deploy to RunPod](https://github.com/caelusway/openscholar-api/actions/workflows/deploy.yml/badge.svg)](https://github.com/caelusway/openscholar-api/actions/workflows/deploy.yml)
-[![Docker Hub](https://img.shields.io/docker/pulls/caelusway/open-scholar-inference.svg)](https://hub.docker.com/r/caelusway/open-scholar-inference)
-[![RunPod Ready](https://img.shields.io/badge/RunPod-Ready-green.svg)](https://runpod.io/)
-
 A clean, efficient API for scientific document retrieval and reranking using OpenScholar models.
 
-## 🎯 Overview
+## Overview
 
-This API provides a focused implementation of scientific document search and ranking, extracted from the proven `retriever_+_reranker.py` pipeline. It performs retrieval and reranking only - no generation step - making it fast, reliable, and easy to deploy.
+This API provides a focused implementation of scientific document search and ranking. It performs retrieval and reranking only - no generation step - making it fast, reliable, and easy to deploy.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Local Development
 ```bash
-# Clone the repository
 git clone https://github.com/caelusway/openscholar-api.git
 cd openscholar-api
 
@@ -22,45 +17,30 @@ cd openscholar-api
 pip install -r requirements.txt
 
 # Set up environment
-echo "OPENSCHOLAR_API_KEY=your-api-key" > .env
+cp .env.example .env
+# Edit .env and set OPENSCHOLAR_API_KEY=your-secure-api-key
 
 # Start the API (downloads models automatically on first run)
 python main.py
 ```
 
-### 🐳 Docker Deployment
+### Docker Deployment
 ```bash
-# Pull and run the Docker image
-docker run -p 8002:8002 -e OPENSCHOLAR_API_KEY=your-api-key caelusway/open-scholar-inference:latest
+docker run -p 8002:8002 -e OPENSCHOLAR_API_KEY=YOUR_SECURE_API_KEY caelusway/open-scholar-inference:latest
 ```
 
-### ☁️ RunPod Deployment
-1. **Automatic CI/CD**: Push to `main` branch triggers automatic deployment
-2. **Manual**: Use the GitHub Actions workflow in the repository
-3. **Access**: Your deployed API at `https://your-runpod-id-8002.proxy.runpod.net`
+### GitHub Actions Deployment
+Push to `main` branch triggers automatic deployment to RunPod via GitHub Actions.
 
 The API will be available at **http://localhost:8002** with interactive documentation at **/docs**.
 
-## 📁 Repository Structure
-
-```
-openscholar-api/
-├── main.py                   # FastAPI application
-├── start_retriever_api.py    # Easy startup script
-├── test_retriever_api.py     # API tests
-├── example_usage.py          # Usage examples
-├── requirements.txt          # Dependencies
-├── README.md                 # This file
-└── .gitignore               # Git ignore rules
-```
-
-## 🔬 Models Used
+## Models Used
 
 - **Retriever**: `bio-protocol/scientific-retriever` (BERT-based embedding model)
 - **Reranker**: `bio-protocol/scientific-reranker` (Cross-encoder for scoring)
 - **Dataset**: `bio-protocol/bio-faiss-longevity-v1` (Scientific paper corpus)
 
-## 🔧 Features
+## Features
 
 - **Fast Retrieval**: FAISS-based vector search
 - **Smart Reranking**: Cross-encoder reranking for improved relevance
@@ -69,22 +49,15 @@ openscholar-api/
 - **GPU/CPU Support**: Automatic device detection and optimization
 - **Auto-download**: Models and indices downloaded automatically
 - **REST API**: Clean FastAPI interface with automatic documentation
+- **API Key Authentication**: Secure access to protected endpoints
 
-## 📊 API Endpoints
+## API Endpoints
 
 ### `GET /health`
-System health check and model loading status.
+System health check and model loading status. No authentication required.
 
 ### `POST /search`
-Main search endpoint with configurable parameters:
-
-- `query`: Search query string
-- `initial_topk`: Initial retrieval count (default: 200)
-- `keep_for_rerank`: Documents to rerank (default: 50)  
-- `final_topk`: Final results returned (default: 10)
-- `per_paper_cap`: Max results per paper (default: 2)
-- `boost_mode`: Boosting mode - "mul" or "add"
-- `max_length`: Max token length (default: 512)
+Main search endpoint with configurable parameters. Requires API key in `X-API-Key` header.
 
 **Request:**
 ```json
@@ -95,7 +68,6 @@ Main search endpoint with configurable parameters:
   "final_topk": 10,
   "per_paper_cap": 2,
   "boost_mode": "mul",
-  "boost_lambda": 0.1,
   "max_length": 512
 }
 ```
@@ -112,9 +84,6 @@ Main search endpoint with configurable parameters:
       "hash_id": 12345,
       "paper_id": "PMC123456",
       "section": "RESULTS",
-      "subsection": "Cell Analysis",
-      "paragraph_index": 3,
-      "boost": 1.2,
       "text_preview": "Platelet-derived transcription factors...",
       "retrieval_score": 0.8534,
       "rerank_score": 2.1567
@@ -125,28 +94,48 @@ Main search endpoint with configurable parameters:
 
 ## Configuration
 
-All configuration is handled via request parameters:
+Set environment variables in `.env` file:
 
-- `initial_topk`: Initial retrieval count (1-1000, default: 200)
-- `keep_for_rerank`: Documents to rerank (1-200, default: 50)
-- `final_topk`: Final results (1-50, default: 10)
-- `per_paper_cap`: Max results per paper (1-10, default: 2)
-- `boost_mode`: "mul" or "add" (default: "mul")
-- `boost_lambda`: Lambda for add mode (0.0-1.0, default: 0.1)
-- `max_length`: Max tokens (128-1024, default: 512)
+```bash
+# API Security - REQUIRED
+OPENSCHOLAR_API_KEY=CHANGE_THIS_TO_A_SECURE_KEY
+
+# Server Configuration
+API_HOST=0.0.0.0
+API_PORT=8002
+
+# Model Configuration
+RETRIEVER_MODEL=bio-protocol/scientific-retriever
+RERANKER_MODEL=bio-protocol/scientific-reranker
+
+# Performance Settings
+MAX_WORKERS=1
+BATCH_SIZE_EMBEDDING=64
+BATCH_SIZE_RERANKING=32
+
+# Timeout Settings
+REQUEST_TIMEOUT=120
+SEARCH_TIMEOUT=180
+
+# Cache Configuration
+CACHE_DIR=./model_cache
+ENABLE_CACHE=true
+
+# Production Settings
+PRODUCTION_MODE=false
+DEBUG_LOGGING=true
+```
 
 ## Example Usage
 
 ### Python Client
-
 ```python
 import requests
 
-# Search for documents
-response = requests.post('http://localhost:8002/search', json={
-    'query': 'How does CRISPR gene editing work?',
-    'final_topk': 5
-})
+headers = {"X-API-Key": "YOUR_SECURE_API_KEY"}
+response = requests.post('http://localhost:8002/search', 
+    json={'query': 'How does CRISPR gene editing work?', 'final_topk': 5},
+    headers=headers)
 
 results = response.json()
 for result in results['results']:
@@ -154,49 +143,55 @@ for result in results['results']:
 ```
 
 ### cURL
-
 ```bash
 curl -X POST "http://localhost:8002/search" \
   -H "Content-Type: application/json" \
-  -d '{
-    "query": "mitochondrial complex I function",
-    "final_topk": 3
-  }'
+  -H "X-API-Key: YOUR_SECURE_API_KEY" \
+  -d '{"query": "mitochondrial complex I function", "final_topk": 3}'
 ```
 
 ## Architecture
 
-The API is built from the proven `retriever_+_reranker.py` pipeline:
+The API follows a simple, efficient pipeline:
 
-1. **Query Embedding**: Scientific retriever encodes the query
-2. **FAISS Search**: Retrieves initial candidates from bio-protocol dataset  
-3. **Boost Application**: Applies document-specific boosts
-4. **Per-paper Capping**: Ensures diversity across papers
-5. **Reranking**: Cross-encoder scores query-passage pairs
-6. **Results**: Returns ranked, scored passages with metadata
+1. **Query Embedding** → Encode user query with scientific retriever
+2. **Vector Search** → FAISS retrieval from scientific paper corpus
+3. **Boost Application** → Apply document-specific relevance boosts
+4. **Per-paper Filtering** → Ensure result diversity across papers
+5. **Reranking** → Cross-encoder scoring of query-passage pairs
+6. **Result Formatting** → Return ranked results with metadata
 
 ## Hardware Requirements
 
 - **GPU Recommended**: CUDA-capable GPU for faster inference
 - **CPU Fallback**: Works on CPU but slower
-- **Memory**: ~4GB RAM minimum, ~8GB recommended
-- **Storage**: ~2GB for models and index (downloaded automatically)
+- **Memory**: 4GB RAM minimum, 8GB recommended
+- **Storage**: 2GB for models and index (downloaded automatically)
 
-## Models Used
+## Performance
 
-- **Retriever**: `bio-protocol/scientific-retriever` (BERT-based)
-- **Reranker**: `bio-protocol/scientific-reranker` (Cross-encoder)  
-- **Dataset**: `bio-protocol/bio-faiss-longevity-v1` (Scientific papers)
+- **Cold start**: 30-60s (model loading)
+- **Query time**: 1-3s per query
+- **Throughput**: 20-30 queries/minute (single worker)
+- **Memory**: 4-8GB RAM recommended
 
-## ⚡ Performance
+## Security
 
-- **Cold start**: ~30-60s (model loading)
-- **Query time**: ~1-3s per query
-- **Throughput**: ~20-30 queries/minute (single worker)
-- **Memory**: ~4-8GB RAM recommended
-- **Storage**: ~2GB for models and indices
+- All API endpoints except `/health` require authentication
+- Set `OPENSCHOLAR_API_KEY` in environment variables
+- Never commit API keys to version control
+- Use HTTPS in production
 
-## 🛠️ Development
+## GitHub Secrets Setup
+
+For automatic deployment, configure these secrets in GitHub repository settings:
+
+- `DOCKER_USERNAME` - Your Docker Hub username
+- `DOCKER_PASSWORD` - Your Docker Hub password/token
+- `RUNPOD_SSH_KEY` - Your RunPod SSH private key
+- `OPENSCHOLAR_API_KEY` - Your API key for the application
+
+## Development
 
 ### Running Tests
 ```bash
@@ -208,46 +203,6 @@ python test_retriever_api.py
 python example_usage.py
 ```
 
-### Custom Configuration
-All parameters are configurable via the API request parameters.
-
-## 📈 Architecture
-
-The API follows a simple, efficient pipeline:
-
-1. **Query Embedding** → Encode user query with scientific retriever
-2. **Vector Search** → FAISS retrieval from scientific paper corpus
-3. **Boost Application** → Apply document-specific relevance boosts
-4. **Per-paper Filtering** → Ensure result diversity across papers
-5. **Reranking** → Cross-encoder scoring of query-passage pairs
-6. **Result Formatting** → Return ranked results with metadata
-
-## 🔄 Migration from Legacy
-
-This clean implementation replaces the previous complex pipeline:
-
-- ✅ **Simpler**: Focused on retrieval + reranking only
-- ✅ **Faster**: Removed generation bottleneck  
-- ✅ **Reliable**: Based on proven working code
-- ✅ **Maintainable**: Clean structure
-- ✅ **Deployable**: Ready for production use
-
-Generation functionality can be added later as a separate service.
-
-## 📝 License
+## License
 
 MIT License - see LICENSE file for details.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test your changes
-5. Submit a pull request
-
-## 📞 Support
-
-- **API Documentation**: Visit `/docs` endpoint when running
-- **Issues**: Open GitHub issues for bugs or feature requests
-- **Examples**: Check `example_usage.py` for usage patterns
