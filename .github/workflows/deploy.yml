@@ -28,50 +28,10 @@ jobs:
         print('All Python files have valid syntax')
         "
 
-  build-docker:
-    runs-on: self-hosted
-    needs: validate-code
-    name: Build and Push Docker Image
-    steps:
-    - name: Clean up Docker cache
-      run: |
-        echo "Initial disk usage:"
-        df -h
-        echo "Cleaning up Docker cache..."
-        sudo docker system prune -af || true
-        echo "After cleanup:"
-        df -h
-
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Login to Docker Hub
-      run: |
-        if [ -n "${{ secrets.DOCKER_USERNAME }}" ] && [ -n "${{ secrets.DOCKER_PASSWORD }}" ]; then
-          echo "Logging into Docker Hub..."
-          echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-          echo "LOGIN_SUCCESS=true" >> $GITHUB_ENV
-        else
-          echo "Docker credentials not available, skipping login"
-          echo "LOGIN_SUCCESS=false" >> $GITHUB_ENV
-        fi
-    
-    - name: Build and push Docker image
-      run: |
-        echo "Building Docker image..."
-        sudo docker build -t ${{ env.IMAGE }}:latest -t ${{ env.IMAGE }}:runpod .
-        
-        if [ "$LOGIN_SUCCESS" = "true" ]; then
-          echo "Pushing Docker image..."
-          sudo docker push ${{ env.IMAGE }}:latest
-          sudo docker push ${{ env.IMAGE }}:runpod
-        else
-          echo "Skipping push - not logged in"
-        fi
 
   deploy-to-runpod:
     runs-on: self-hosted
-    needs: build-docker
+    needs: validate-code
     name: Deploy to RunPod Server
     steps:
     - name: Check SSH key configuration
@@ -88,51 +48,62 @@ jobs:
         echo "${{ secrets.RUNPOD_SSH_KEY }}" > runpod_key
         chmod 600 runpod_key
 
-    - name: Stop existing container
+    - name: Checkout and upload code
       run: |
-        echo "Connecting to RunPod and stopping existing container..."
-        ssh -i runpod_key -o StrictHostKeyChecking=no ${{ env.RUNPOD_HOST }} '
-          echo "Stopping existing openscholar-api container..."
-          docker stop openscholar-api || echo "No container named openscholar-api found"
-          docker rm openscholar-api || echo "No container to remove"
-        '
-
-    - name: Pull latest Docker image
-      run: |
-        echo "Pulling latest Docker image on RunPod..."
+        echo "Uploading code to RunPod..."
         ssh -i runpod_key -o StrictHostKeyChecking=no ${{ env.RUNPOD_HOST }} '
           cd /workspace
-          echo "Pulling image: ${{ env.IMAGE }}:latest"
-          docker pull ${{ env.IMAGE }}:latest
+          echo "Stopping existing PM2 processes..."
+          pm2 stop openscholar-api || echo "No PM2 process found"
+          pm2 delete openscholar-api || echo "No PM2 process to delete"
+          
+          echo "Backing up existing code..."
+          rm -rf openscholar-api-backup
+          mv openscholar-api openscholar-api-backup || echo "No existing code to backup"
+          
+          echo "Creating directories..."
+          mkdir -p openscholar-api model_cache logs
+        '
+        
+        echo "Copying code to RunPod..."
+        scp -i runpod_key -o StrictHostKeyChecking=no -r . ${{ env.RUNPOD_HOST }}:/workspace/openscholar-api/
+
+    - name: Install dependencies and setup
+      run: |
+        echo "Installing dependencies on RunPod..."
+        ssh -i runpod_key -o StrictHostKeyChecking=no ${{ env.RUNPOD_HOST }} '
+          cd /workspace/openscholar-api
+          echo "Installing Python dependencies..."
+          pip3 install -r requirements.txt
+          
+          echo "Installing PM2 if not exists..."
+          which pm2 || npm install -g pm2
+          
+          echo "Setting up environment..."
+          export OPENSCHOLAR_API_KEY="${{ secrets.OPENSCHOLAR_API_KEY }}"
+          export API_HOST=0.0.0.0
+          export API_PORT=8002
+          export PRODUCTION_MODE=true
+          export DEBUG_LOGGING=false
         '
 
-    - name: Prepare directories
+    - name: Start application with PM2
       run: |
-        echo "Creating necessary directories on RunPod..."
+        echo "Starting application with PM2..."
         ssh -i runpod_key -o StrictHostKeyChecking=no ${{ env.RUNPOD_HOST }} '
-          cd /workspace
-          echo "Creating model_cache and logs directories..."
-          mkdir -p model_cache logs
-          echo "Directories created successfully"
-        '
-
-    - name: Start new container
-      run: |
-        echo "Starting new OpenScholar API container..."
-        ssh -i runpod_key -o StrictHostKeyChecking=no ${{ env.RUNPOD_HOST }} '
-          cd /workspace
-          echo "Starting container with environment variables..."
-          docker run -d \
-            --name openscholar-api \
-            --restart unless-stopped \
-            -p 8002:8002 \
-            -e OPENSCHOLAR_API_KEY="${{ secrets.OPENSCHOLAR_API_KEY }}" \
-            -e API_HOST=0.0.0.0 \
-            -e API_PORT=8002 \
-            -v /workspace/model_cache:/app/model_cache \
-            -v /workspace/logs:/app/logs \
-            ${{ env.IMAGE }}:latest
-          echo "Container started successfully"
+          cd /workspace/openscholar-api
+          echo "Starting PM2 process..."
+          pm2 start main.py --name openscholar-api \
+            --interpreter python3 \
+            --env OPENSCHOLAR_API_KEY="${{ secrets.OPENSCHOLAR_API_KEY }}" \
+            --env API_HOST=0.0.0.0 \
+            --env API_PORT=8002 \
+            --env PRODUCTION_MODE=true \
+            --env DEBUG_LOGGING=false
+          
+          pm2 save
+          pm2 startup || echo "PM2 startup already configured"
+          echo "Application started successfully"
         '
 
     - name: Wait for service startup
