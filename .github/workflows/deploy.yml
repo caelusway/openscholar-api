@@ -1,4 +1,4 @@
-name: 🚀 Deploy OpenScholar API
+name: Deploy OpenScholar API
 
 on:
   push:
@@ -10,22 +10,33 @@ env:
   RUNPOD_HOST: mt6rz9fwgoa11u-64411a76@ssh.runpod.io
 
 jobs:
-  build-and-deploy:
+  validate-code:
     runs-on: ubuntu-latest
+    name: Validate Python Code
     steps:
-    - name: 📥 Checkout
+    - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: 🧪 Quick tests
+    - name: Run syntax validation
       run: |
+        echo "Validating Python syntax..."
         python -c "
         import ast
         for f in ['main.py', 'handler.py']:
+          print(f'Checking {f}...')
           ast.parse(open(f).read())
-        print('✅ Syntax valid')
+        print('All Python files have valid syntax')
         "
 
-    - name: 🐳 Docker Login
+  build-docker:
+    runs-on: ubuntu-latest
+    needs: validate-code
+    name: Build and Push Docker Image
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Login to Docker Hub
       uses: docker/login-action@v3
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
@@ -33,7 +44,7 @@ jobs:
       continue-on-error: true
       id: docker-login
     
-    - name: 🏗️ Build Image
+    - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
         context: .
@@ -41,45 +52,100 @@ jobs:
         tags: ${{ env.IMAGE }}:latest,${{ env.IMAGE }}:runpod
         platforms: linux/amd64
 
-    - name: 🚀 Deploy to RunPod
+  deploy-to-runpod:
+    runs-on: ubuntu-latest
+    needs: build-docker
+    name: Deploy to RunPod Server
+    steps:
+    - name: Check SSH key configuration
       run: |
         if [ -z "${{ secrets.RUNPOD_SSH_KEY }}" ]; then
-          echo "⚠️ RunPod SSH key not configured, skipping deployment"
+          echo "WARNING: RunPod SSH key not configured, skipping deployment"
           exit 0
         fi
-        echo "${{ secrets.RUNPOD_SSH_KEY }}" > key && chmod 600 key
-        ssh -i key -o StrictHostKeyChecking=no ${{ env.RUNPOD_HOST }} '
-          cd /workspace
-          # Backup and cleanup
-          rm -rf openscholar-api-old && mv openscholar-api openscholar-api-old 2>/dev/null || true
-          
-          # Pull latest image and extract
-          docker pull ${{ env.IMAGE }}:latest
-          CONTAINER=$(docker create ${{ env.IMAGE }}:latest)
-          docker cp $CONTAINER:/app ./openscholar-api
-          docker rm $CONTAINER
-          
-          # Setup environment
-          cd openscholar-api
-          echo "OPENSCHOLAR_API_KEY=${{ secrets.OPENSCHOLAR_API_KEY }}" > .env
-          echo "API_HOST=0.0.0.0" >> .env
-          echo "API_PORT=8002" >> .env
-          mkdir -p model_cache logs
-          
-          # Stop old process and start new with PM2
-          pm2 stop openscholar-api || true
-          pm2 delete openscholar-api || true
-          pm2 start ecosystem.config.js
-          pm2 save
-          
-          # Wait and test
-          sleep 20
-          curl -f http://localhost:8002/health && echo "✅ Deployed successfully!"
-        '
-        rm key
+        echo "SSH key configured, proceeding with deployment"
 
-    - name: 📊 Summary
+    - name: Prepare SSH connection
+      run: |
+        echo "Setting up SSH key for RunPod connection..."
+        echo "${{ secrets.RUNPOD_SSH_KEY }}" > runpod_key
+        chmod 600 runpod_key
+
+    - name: Stop existing container
+      run: |
+        echo "Connecting to RunPod and stopping existing container..."
+        ssh -i runpod_key -o StrictHostKeyChecking=no ${{ env.RUNPOD_HOST }} '
+          echo "Stopping existing openscholar-api container..."
+          docker stop openscholar-api || echo "No container named openscholar-api found"
+          docker rm openscholar-api || echo "No container to remove"
+        '
+
+    - name: Pull latest Docker image
+      run: |
+        echo "Pulling latest Docker image on RunPod..."
+        ssh -i runpod_key -o StrictHostKeyChecking=no ${{ env.RUNPOD_HOST }} '
+          cd /workspace
+          echo "Pulling image: ${{ env.IMAGE }}:latest"
+          docker pull ${{ env.IMAGE }}:latest
+        '
+
+    - name: Prepare directories
+      run: |
+        echo "Creating necessary directories on RunPod..."
+        ssh -i runpod_key -o StrictHostKeyChecking=no ${{ env.RUNPOD_HOST }} '
+          cd /workspace
+          echo "Creating model_cache and logs directories..."
+          mkdir -p model_cache logs
+          echo "Directories created successfully"
+        '
+
+    - name: Start new container
+      run: |
+        echo "Starting new OpenScholar API container..."
+        ssh -i runpod_key -o StrictHostKeyChecking=no ${{ env.RUNPOD_HOST }} '
+          cd /workspace
+          echo "Starting container with environment variables..."
+          docker run -d \
+            --name openscholar-api \
+            --restart unless-stopped \
+            -p 8002:8002 \
+            -e OPENSCHOLAR_API_KEY="${{ secrets.OPENSCHOLAR_API_KEY }}" \
+            -e API_HOST=0.0.0.0 \
+            -e API_PORT=8002 \
+            -v /workspace/model_cache:/app/model_cache \
+            -v /workspace/logs:/app/logs \
+            ${{ env.IMAGE }}:latest
+          echo "Container started successfully"
+        '
+
+    - name: Wait for service startup
+      run: |
+        echo "Waiting for service to start up..."
+        sleep 20
+        echo "Service startup wait completed"
+
+    - name: Health check
+      run: |
+        echo "Performing health check..."
+        ssh -i runpod_key -o StrictHostKeyChecking=no ${{ env.RUNPOD_HOST }} '
+          echo "Testing API health endpoint..."
+          if curl -f http://localhost:8002/health; then
+            echo "Health check passed - API is responding"
+          else
+            echo "Health check failed - API not responding"
+            exit 1
+          fi
+        '
+
+    - name: Cleanup SSH key
+      if: always()
+      run: |
+        echo "Cleaning up SSH key file..."
+        rm -f runpod_key
+
+    - name: Deployment summary
       if: success()
       run: |
-        echo "🎉 **Deployment Complete!**" >> $GITHUB_STEP_SUMMARY
-        echo "🌐 **API:** https://mt6rz9fwgoa11u-64411a76-8002.proxy.runpod.net" >> $GITHUB_STEP_SUMMARY
+        echo "**Deployment Complete**" >> $GITHUB_STEP_SUMMARY
+        echo "**API URL:** https://mt6rz9fwgoa11u-64411a76-8002.proxy.runpod.net" >> $GITHUB_STEP_SUMMARY
+        echo "**Status:** Successfully deployed to RunPod" >> $GITHUB_STEP_SUMMARY
