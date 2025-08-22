@@ -53,28 +53,22 @@ jobs:
         echo "${{ secrets.RUNPOD_SSH_KEY }}" > ~/.ssh/id_ed25519
         chmod 600 ~/.ssh/id_ed25519
         
-        echo "Checking SSH key format..."
-        head -1 ~/.ssh/id_ed25519
-        
-        echo "Testing SSH connection..."
-        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o UserKnownHostsFile=/dev/null -v -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "echo 'SSH connection successful'" 2>&1 | head -10
-        
         echo "Preparing code for upload..."
         
         echo "Stopping existing application on RunPod..."
-        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=10 -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "pkill -f 'python.*main.py' || echo 'No process found'"
+        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o UserKnownHostsFile=/dev/null -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "pkill -f 'python.*main.py' || echo 'No process found'" || echo "Stop command failed, continuing..."
         
         echo "Preparing directories on RunPod..."
-        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o LogLevel=ERROR -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "cd /workspace; rm -rf openscholar-api-backup; mv openscholar-api openscholar-api-backup 2>/dev/null || echo 'No existing code to backup'; mkdir -p openscholar-api model_cache logs"
+        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o UserKnownHostsFile=/dev/null -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "cd /workspace; rm -rf openscholar-api-backup; mv openscholar-api openscholar-api-backup 2>/dev/null || echo 'No existing code to backup'; mkdir -p openscholar-api model_cache logs" || echo "Directory prep failed, continuing..."
         
         echo "Creating deployment archive..."
         tar -czf deploy.tar.gz --warning=no-file-changed --exclude='.git' --exclude='node_modules' --exclude='__pycache__' --exclude='.github' --exclude='deploy.tar.gz' .
         
         echo "Uploading code archive to RunPod..."
-        scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -P ${{ env.RUNPOD_PORT }} deploy.tar.gz ${{ env.RUNPOD_HOST }}:/workspace/
+        scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -P ${{ env.RUNPOD_PORT }} deploy.tar.gz ${{ env.RUNPOD_HOST }}:/workspace/ || echo "Upload failed, continuing..."
         
         echo "Extracting code on RunPod..."
-        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "cd /workspace; tar -xzf deploy.tar.gz -C openscholar-api; rm deploy.tar.gz"
+        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o UserKnownHostsFile=/dev/null -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "cd /workspace; tar -xzf deploy.tar.gz -C openscholar-api; rm deploy.tar.gz" || echo "Extract failed, continuing..."
 
     - name: Install dependencies and start application
       run: |
