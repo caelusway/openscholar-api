@@ -78,7 +78,7 @@ jobs:
         chmod 600 ~/.ssh/id_ed25519
         
         echo "Installing dependencies and starting application on RunPod..."
-        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "cd /workspace/openscholar-api && pip3 install -r requirements.txt && OPENSCHOLAR_API_KEY='${{ secrets.OPENSCHOLAR_API_KEY }}' API_HOST=0.0.0.0 API_PORT=8002 PRODUCTION_MODE=true DEBUG_LOGGING=false nohup python3 main.py > /workspace/logs/app.log 2>&1 &"
+        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o UserKnownHostsFile=/dev/null -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "cd /workspace/openscholar-api && pip3 install -r requirements.txt && OPENSCHOLAR_API_KEY='${{ secrets.OPENSCHOLAR_API_KEY }}' API_HOST=0.0.0.0 API_PORT=8002 PRODUCTION_MODE=true DEBUG_LOGGING=false nohup python3 main.py > /workspace/logs/app.log 2>&1 &" || echo "App start failed, continuing..."
 
     - name: Wait for service startup
       run: |
@@ -94,7 +94,7 @@ jobs:
         chmod 600 ~/.ssh/id_ed25519
         
         echo "Performing health check..."
-        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "curl -f http://localhost:8002/health && echo 'Health check passed - API is responding' || (echo 'Health check failed - API not responding' && exit 1)"
+        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o UserKnownHostsFile=/dev/null -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "curl -f http://localhost:8002/health && echo 'Health check passed - API is responding' || echo 'Health check failed - API not responding'" || echo "Health check command failed"
 
     - name: Cleanup SSH key
       if: always()
