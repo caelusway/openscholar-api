@@ -7,7 +7,7 @@ services:
     ports:
       - "8002:8002"
     environment:
-      - OPENSCHOLAR_API_KEY=${OPENSCHOLAR_API_KEY:-openscholar-docker-key}
+      - OPENSCHOLAR_API_KEY=${OPENSCHOLAR_API_KEY}
       - API_HOST=0.0.0.0
       - API_PORT=8002
       - PRODUCTION_MODE=true

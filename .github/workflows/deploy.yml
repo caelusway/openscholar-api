@@ -11,7 +11,7 @@ env:
 
 jobs:
   validate-code:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     name: Validate Python Code
     steps:
     - name: Checkout repository
@@ -29,18 +29,16 @@ jobs:
         "
 
   build-docker:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: validate-code
     name: Build and Push Docker Image
     steps:
-    - name: Free up disk space
+    - name: Clean up Docker cache
       run: |
         echo "Initial disk usage:"
         df -h
-        echo "Cleaning up Docker and system files..."
-        docker system prune -af
-        sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/android
-        sudo apt-get clean
+        echo "Cleaning up Docker cache..."
+        docker system prune -af || true
         echo "After cleanup:"
         df -h
 
@@ -69,7 +67,7 @@ jobs:
         cache-to: type=gha,mode=max
 
   deploy-to-runpod:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: build-docker
     name: Deploy to RunPod Server
     steps:
