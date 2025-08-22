@@ -20,7 +20,7 @@ jobs:
     - name: Run syntax validation
       run: |
         echo "Validating Python syntax..."
-        python -c "
+        python3 -c "
         import ast
         for f in ['main.py', 'handler.py']:
           print(f'Checking {f}...')
