@@ -42,17 +42,15 @@ jobs:
         fi
         echo "SSH key configured, proceeding with deployment"
 
-    - name: Prepare SSH connection
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Prepare SSH connection and upload code
       run: |
         echo "Setting up SSH key for RunPod connection..."
         echo "${{ secrets.RUNPOD_SSH_KEY }}" > runpod_key
         chmod 600 runpod_key
-
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Prepare and upload code
-      run: |
+        
         echo "Preparing code for upload..."
         
         echo "Stopping existing PM2 processes on RunPod..."
@@ -72,11 +70,19 @@ jobs:
 
     - name: Install dependencies and setup
       run: |
+        echo "Setting up SSH key..."
+        echo "${{ secrets.RUNPOD_SSH_KEY }}" > runpod_key
+        chmod 600 runpod_key
+        
         echo "Installing dependencies on RunPod..."
         ssh -i runpod_key -o StrictHostKeyChecking=no -T ${{ env.RUNPOD_HOST }} "cd /workspace/openscholar-api && pip3 install -r requirements.txt && which pm2 || npm install -g pm2"
 
     - name: Start application with PM2
       run: |
+        echo "Setting up SSH key..."
+        echo "${{ secrets.RUNPOD_SSH_KEY }}" > runpod_key
+        chmod 600 runpod_key
+        
         echo "Starting application with PM2..."
         ssh -i runpod_key -o StrictHostKeyChecking=no -T ${{ env.RUNPOD_HOST }} "cd /workspace/openscholar-api && OPENSCHOLAR_API_KEY='${{ secrets.OPENSCHOLAR_API_KEY }}' API_HOST=0.0.0.0 API_PORT=8002 PRODUCTION_MODE=true DEBUG_LOGGING=false pm2 start main.py --name openscholar-api --interpreter python3 && pm2 save"
 
@@ -88,16 +94,12 @@ jobs:
 
     - name: Health check
       run: |
+        echo "Setting up SSH key..."
+        echo "${{ secrets.RUNPOD_SSH_KEY }}" > runpod_key
+        chmod 600 runpod_key
+        
         echo "Performing health check..."
-        ssh -i runpod_key -o StrictHostKeyChecking=no ${{ env.RUNPOD_HOST }} '
-          echo "Testing API health endpoint..."
-          if curl -f http://localhost:8002/health; then
-            echo "Health check passed - API is responding"
-          else
-            echo "Health check failed - API not responding"
-            exit 1
-          fi
-        '
+        ssh -i runpod_key -o StrictHostKeyChecking=no -T ${{ env.RUNPOD_HOST }} "curl -f http://localhost:8002/health && echo 'Health check passed - API is responding' || (echo 'Health check failed - API not responding' && exit 1)"
 
     - name: Cleanup SSH key
       if: always()
