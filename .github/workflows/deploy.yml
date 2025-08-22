@@ -54,13 +54,13 @@ jobs:
         echo "Preparing code for upload..."
         
         echo "Stopping existing PM2 processes on RunPod..."
-        ssh -i runpod_key -o StrictHostKeyChecking=no -T ${{ env.RUNPOD_HOST }} "cd /workspace && pm2 stop openscholar-api || echo 'No PM2 process found' && pm2 delete openscholar-api || echo 'No PM2 process to delete'"
+        ssh -i runpod_key -o StrictHostKeyChecking=no -o LogLevel=ERROR -T ${{ env.RUNPOD_HOST }} "cd /workspace; pm2 stop openscholar-api || echo 'No PM2 process found'; pm2 delete openscholar-api || echo 'No PM2 process to delete'"
         
         echo "Preparing directories on RunPod..."
-        ssh -i runpod_key -o StrictHostKeyChecking=no -T ${{ env.RUNPOD_HOST }} "cd /workspace && rm -rf openscholar-api-backup && mv openscholar-api openscholar-api-backup 2>/dev/null || echo 'No existing code to backup' && mkdir -p openscholar-api model_cache logs"
+        ssh -i runpod_key -o StrictHostKeyChecking=no -o LogLevel=ERROR -T ${{ env.RUNPOD_HOST }} "cd /workspace; rm -rf openscholar-api-backup; mv openscholar-api openscholar-api-backup 2>/dev/null || echo 'No existing code to backup'; mkdir -p openscholar-api model_cache logs"
         
         echo "Creating deployment archive..."
-        tar -czf deploy.tar.gz --exclude='.git' --exclude='node_modules' --exclude='__pycache__' --exclude='.github' .
+        tar -czf deploy.tar.gz --warning=no-file-changed --exclude='.git' --exclude='node_modules' --exclude='__pycache__' --exclude='.github' --exclude='deploy.tar.gz' .
         
         echo "Uploading code archive to RunPod..."
         scp -i runpod_key -o StrictHostKeyChecking=no deploy.tar.gz ${{ env.RUNPOD_HOST }}:/workspace/
