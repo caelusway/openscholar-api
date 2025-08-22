@@ -53,10 +53,16 @@ jobs:
         echo "${{ secrets.RUNPOD_SSH_KEY }}" > ~/.ssh/id_ed25519
         chmod 600 ~/.ssh/id_ed25519
         
+        echo "Checking SSH key format..."
+        head -1 ~/.ssh/id_ed25519
+        
+        echo "Testing SSH connection..."
+        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o UserKnownHostsFile=/dev/null -v -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "echo 'SSH connection successful'" 2>&1 | head -10
+        
         echo "Preparing code for upload..."
         
         echo "Stopping existing application on RunPod..."
-        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o LogLevel=ERROR -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "pkill -f 'python.*main.py' || echo 'No process found'"
+        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=10 -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "pkill -f 'python.*main.py' || echo 'No process found'"
         
         echo "Preparing directories on RunPod..."
         ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o LogLevel=ERROR -T -p ${{ env.RUNPOD_PORT }} ${{ env.RUNPOD_HOST }} "cd /workspace; rm -rf openscholar-api-backup; mv openscholar-api openscholar-api-backup 2>/dev/null || echo 'No existing code to backup'; mkdir -p openscholar-api model_cache logs"
