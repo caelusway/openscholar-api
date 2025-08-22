@@ -38,7 +38,7 @@ jobs:
         echo "Initial disk usage:"
         df -h
         echo "Cleaning up Docker cache..."
-        docker system prune -af || true
+        sudo docker system prune -af || true
         echo "After cleanup:"
         df -h
 
