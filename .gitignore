@@ -1,0 +1,109 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Model cache & large files
+.cache/
+models/
+model_cache/
+*.safetensors
+*.bin
+*.onnx
+*.pkl
+*.h5
+*.pt
+*.pth
+transformers_cache/
+huggingface/
+
+# Logs
+*.log
+logs/
+
+# Data
+data/
+*.jsonl
+*.parquet
+*.faiss
+index/
+
+# Test outputs
+test_results/
+outputs/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+config/secrets.json
+
+# Production deployment
+docker-compose.override.yml
+.docker/
+deployment/
+kubernetes/secrets/
+
+# Node.js (deprecated, kept for historical reference)
+node_modules/
+package-lock.json
+package.json
+
+# API keys and certificates
+api_keys/
+certs/
+ssl/
+
+# Runtime data
+pid/
+run/
+var/
+
+# Backup files
+*.backup
+*.bak
+*.old
+
+archive/
+GITHUB_SECRETS_SETUP.md
+RUNPOD_MANUAL_DEPLOY.md

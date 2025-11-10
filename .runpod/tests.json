@@ -1,0 +1,61 @@
+{
+  "tests": [
+    {
+      "name": "health_check",
+      "input": {},
+      "timeout": 30000
+    },
+    {
+      "name": "simple_search",
+      "input": {
+        "query": "CRISPR gene editing mechanisms",
+        "final_topk": 5
+      },
+      "timeout": 60000
+    },
+    {
+      "name": "complex_search",
+      "input": {
+        "query": "machine learning applications in drug discovery",
+        "initial_topk": 100,
+        "keep_for_rerank": 30,
+        "final_topk": 10,
+        "per_paper_cap": 2
+      },
+      "timeout": 90000
+    },
+    {
+      "name": "admin_stats",
+      "input": {
+        "endpoint": "admin_stats"
+      },
+      "timeout": 15000
+    }
+  ],
+  "config": {
+    "gpuTypeId": "NVIDIA GeForce RTX 4090",
+    "gpuCount": 1,
+    "env": [
+      {
+        "key": "OPENSCHOLAR_API_KEY",
+        "value": "test-api-key-for-validation"
+      },
+      {
+        "key": "DEBUG_LOGGING",
+        "value": "true"
+      },
+      {
+        "key": "SEARCH_TIMEOUT",
+        "value": "60"
+      }
+    ],
+    "allowedCudaVersions": [
+      "11.8",
+      "12.0",
+      "12.1",
+      "12.2",
+      "12.3",
+      "12.4"
+    ]
+  }
+}
